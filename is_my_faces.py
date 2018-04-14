@@ -79,7 +79,7 @@ num_batch = (len(train_x)) // batch_size#计算总共多少轮
 input = tf.placeholder(tf.float32,[None,size,size,3])
 output = tf.placeholder(tf.float32,[None,2])#输出加两个，true or false
 #这里注意的是tf.reshape不是np.reshape
-images = tf.reshape(input,[-1,size,size,3])
+# images = tf.reshape(input,[-1,size,size,3])
 #drop_out必须设置概率keep_prob，并且keep_prob也是一个占位符，跟输入是一样的，这里由于和原文不一样所以这里应该可以
 #去除，因为我会在最后的全连接层设置drop_out而不是在每一层都设置drop_out
 keep_prob_5 = tf.placeholder(tf.float32)
@@ -88,16 +88,17 @@ keep_prob_75 = tf.placeholder(tf.float32)
 #下面开始进行卷积层的处理
 #第一层卷积，首先输入的图片大小是64*64
 def cnnlayer():
-    conv1 = tf.layers.conv2d(inputs=images,
+    #第一层卷积
+    conv1 = tf.layers.conv2d(inputs=input,
                             filters=32,
                             kernel_size=[5,5],
                             strides=1,
                             padding='same',
-                            activation=tf.nn.relu)#(64*64*6)
+                            activation=tf.nn.relu)#(64*64*32)
 #第一层池化
     pool1 = tf.layers.max_pooling2d(inputs=conv1,
                                     pool_size=[2,2],
-                                    strides=2)#(32*32*6)
+                                    strides=2)#(32*32*32)
 
 #第二层卷积
     conv2 = tf.layers.conv2d(inputs=pool1,
@@ -105,12 +106,12 @@ def cnnlayer():
                             kernel_size=[5,5],
                             strides=1,
                             padding='same',
-                            activation=tf.nn.relu)#(32*32*6)
+                            activation=tf.nn.relu)#(32*32*32)
 
 #第二层池化
     pool2 = tf.layers.max_pooling2d(inputs=conv2,
                                     pool_size=[2,2],
-                                    strides=2)#(16*16*6)
+                                    strides=2)#(16*16*32)
 
 #第三层卷积
     conv3 = tf.layers.conv2d(inputs=pool2,
@@ -118,28 +119,28 @@ def cnnlayer():
                             kernel_size=[5,5],
                             strides=1,
                             padding='same',
-                            activation=tf.nn.relu)#(变成16*16*6)
+                            activation=tf.nn.relu)#(变成16*16*32)
 #第三层池化
     pool2 = tf.layers.max_pooling2d(inputs=conv3,
                                     pool_size=[2,2],
-                                    strides=2)#(8*8*6)
+                                    strides=2)#(8*8*32)
 
 #第四层卷积
-    conv4 = tf.layers.conv2d(inputs=pool2,
-                            filters=64,
-                            kernel_size=[5,5],
-                            strides=1,
-                            padding='same',
-                            activation=tf.nn.relu)#(变成8*8*6）
-    pool3 = tf.layers.max_pooling2d(inputs=conv4,
-                                    pool_size=[2,2],
-                                    strides=2)#(变成4*4*6)
+    # conv4 = tf.layers.conv2d(inputs=pool2,
+    #                         filters=64,
+    #                         kernel_size=[5,5],
+    #                         strides=1,
+    #                         padding='same',
+    #                         activation=tf.nn.relu)#(变成8*8*6）
+    # pool3 = tf.layers.max_pooling2d(inputs=conv4,
+    #                                 pool_size=[2,2],
+    #                                 strides=2)#(变成4*4*6)
 
 #卷积网络在计算每一层的网络个数的时候要细心一些
 #卷积层加的padding为same是不会改变卷积层的大小的
 #要注意下一层的输入是上一层的输出
 #平坦化
-    flat = tf.reshape(pool3,[-1,4*4*64])
+    flat = tf.reshape(pool2,[-1,8*8*32])
 
 #经过全连接层
     dense = tf.layers.dense(inputs=flat,
@@ -152,8 +153,9 @@ def cnnlayer():
 #输出层
     logits = tf.layers.dense(drop_out,units=2)
     return logits
-
+    # yield logits
 out = cnnlayer()
+# out = next(cnnlayer())
 predict = tf.argmax(out,1)
 saver = tf.train.Saver()
 sess = tf.Session()

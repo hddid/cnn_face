@@ -83,11 +83,9 @@ output = tf.placeholder(tf.float32,[None,2])
 
 #这里将input在进行处理一下
 images = tf.reshape(input,[-1,size,size,3])
-#drop_out必须设置概率keep_prob，并且keep_prob也是一个占位符，
-# 跟输入是一样的，这里由于和原文不一样所以这里应该可以去除，
-# 因为我会在最后的全连接层设置drop_out而不用在每一层都设置drop_out
-# keep_prob_5 = tf.placeholder(tf.float32)
-# keep_prob_75 = tf.placeholder(tf.float32)
+
+keep_prob_5 = tf.placeholder(tf.float32)
+keep_prob_75 = tf.placeholder(tf.float32)
 
 #下面开始进行卷积层的处理
 #第一层卷积，首先输入的图片大小是64*64
@@ -136,14 +134,14 @@ def cnnlayer():
                             padding='same',
                             activation=tf.nn.relu)#输出大小是(变成8*8*64）
 
-    pool3 = tf.layers.max_pooling2d(inputs=conv4,
-                                    pool_size=[2,2],
-                                    strides=2)#输出大小是(变成4*4*64)
+    # pool3 = tf.layers.max_pooling2d(inputs=conv4,
+    #                                 pool_size=[2,2],
+    #                                 strides=2)#输出大小是(变成4*4*64)
 
 #卷积网络在计算每一层的网络个数的时候要细心一些，不然容易出错
 #要注意下一层的输入是上一层的输出
     #平坦化
-    flat = tf.reshape(pool3,[-1,4*4*64])
+    flat = tf.reshape(conv4,[-1,8*8*64])
 
     #经过全连接层
     dense = tf.layers.dense(inputs=flat,
@@ -151,18 +149,22 @@ def cnnlayer():
                             activation=tf.nn.relu)
 
     #drop_out处理
-    drop_out = tf.layers.dropout(inputs=dense,rate=0.2)
+    drop_out = tf.layers.dropout(inputs=dense,rate=0.5)
 
     #输出层
     logits = tf.layers.dense(drop_out,units=2)
     return logits
+    # yield logits
 
 
 def cnntrain():
     logits = cnnlayer()
+    # logits = next(cnnlayer())
+
     #交叉熵损失函数
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=output))
-
+    #将训练优化方法改成GradientDescentOptimizer发现并没有加快收敛所以又改回AdamOptimizer
+    #train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy)
     train_step = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
     # 比较标签是否相等，再求的所有数的平均值，tf.cast(强制转换类型)
     accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits,1),tf.argmax(output,1)),tf.float32))
@@ -186,7 +188,7 @@ def cnntrain():
                 batch_x = train_x[i*batch_size : (i + 1) * batch_size]
                 batch_y = train_y[i*batch_size : (i + 1) * batch_size]
 
-                #开始训练数据，同时训练三个变量，返回三个数据，这里由于我前面去掉了keep_prob所以这里也去掉
+                #开始训练数据，同时训练三个变量，返回三个数据，
                 _,loss,summary = sess.run([train_step,cross_entropy,merged_summary_op],
                                             feed_dict={input: batch_x, output: batch_y})
                 summary_writer.add_summary(summary, n * num_batch + i)
@@ -195,11 +197,11 @@ def cnntrain():
 
                 if (n * num_batch + i) % 100 == 0:
                     # 获取测试数据的准确率
-                    acc = accuracy.eval({input: test_x, output: test_y})
-                    print("第%f个batch，准确率%f" % (n * num_batch + i, acc))
+                    acc = accuracy.eval({input: test_x, output: test_y,keep_prob_5:1.0,keep_prob_75:1.0})
+                    print("第%f个batch，准确率%f" % (n*num_batch+i, acc))
 
                     # 准确率大于0.98时保存并退出
-                    if acc > 0.98:
+                    if acc > 0.98 and n > 2:
                         saver.save(sess, './train_faces.model', global_step=n * num_batch + i)
                         sys.exit(0)
         print('accuracy less 0.98, exited!')
