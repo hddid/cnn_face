@@ -7,7 +7,7 @@ import sys
 from sklearn.model_selection import train_test_split
 
 
-my_faces_path = './gray_my_faces'
+my_faces_path = './my_faces'
 other_faces_path = './other_faces'
 
 #图片的大小采集的64*64
@@ -43,8 +43,6 @@ def readData(path,h=size,w=size):
 
             top,bottom,left,right = getPaddingSize(img)
 
-            #将图片放大，扩充图片边缘部分，这里不是很理解为什么要扩充边缘部分
-            #可能是为了实现像padding的作用
             img = cv2.copyMakeBorder(img,top,bottom,left,right,cv2.BORDER_CONSTANT,value=[0,0,0])
             img = cv2.resize(img,(h,w))
 
@@ -81,16 +79,16 @@ num_batch = (len(train_x)) // batch_size
 input = tf.placeholder(tf.float32,[None,size,size,3])
 output = tf.placeholder(tf.float32,[None,2])
 
-#这里将input在进行处理一下
-images = tf.reshape(input,[-1,size,size,3])
+#这里将input再进行处理一下
+# images = tf.reshape(input,[-1,size,size,3])
 
 keep_prob_5 = tf.placeholder(tf.float32)
 keep_prob_75 = tf.placeholder(tf.float32)
 
 #下面开始进行卷积层的处理
-#第一层卷积，首先输入的图片大小是64*64
+#第一层卷积，首先输入的图片大小是64*64*3三通道图片
 def cnnlayer():
-    conv1 = tf.layers.conv2d(inputs=images,
+    conv1 = tf.layers.conv2d(inputs=input,
                             filters=32,
                             kernel_size=[5,5],
                             strides=1,
@@ -128,7 +126,7 @@ def cnnlayer():
 
     #第四层卷积
     conv4 = tf.layers.conv2d(inputs=pool2,
-                            filters=64,
+                            filters=32,
                             kernel_size=[5,5],
                             strides=1,
                             padding='same',
@@ -137,11 +135,11 @@ def cnnlayer():
     # pool3 = tf.layers.max_pooling2d(inputs=conv4,
     #                                 pool_size=[2,2],
     #                                 strides=2)#输出大小是(变成4*4*64)
-
+#缩小一下大小
 #卷积网络在计算每一层的网络个数的时候要细心一些，不然容易出错
 #要注意下一层的输入是上一层的输出
     #平坦化
-    flat = tf.reshape(conv4,[-1,8*8*64])
+    flat = tf.reshape(conv4,[-1,8*8*32])
 
     #经过全连接层
     dense = tf.layers.dense(inputs=flat,
@@ -169,6 +167,7 @@ def cnntrain():
     # 比较标签是否相等，再求的所有数的平均值，tf.cast(强制转换类型)
     accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits,1),tf.argmax(output,1)),tf.float32))
     #将loss与accuracy保存以供tensorboard使用
+
     tf.summary.scalar('loss',cross_entropy)
     tf.summary.scalar('accuracy',accuracy)
     #合并所有的Op为一个Op
@@ -193,7 +192,7 @@ def cnntrain():
                                             feed_dict={input: batch_x, output: batch_y})
                 summary_writer.add_summary(summary, n * num_batch + i)
                 # 打印损失
-                print(n * num_batch + i, loss)
+                print("第%d个batch , 此时的loss%f" % (n * num_batch + i, loss))
 
                 if (n * num_batch + i) % 100 == 0:
                     # 获取测试数据的准确率

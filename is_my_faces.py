@@ -77,9 +77,9 @@ batch_size = 100
 num_batch = (len(train_x)) // batch_size#计算总共多少轮
 
 input = tf.placeholder(tf.float32,[None,size,size,3])
-output = tf.placeholder(tf.float32,[None,2])#输出加两个，true or false
+output = tf.placeholder(tf.float32,[None,2])#输出为两个，true or false
 #这里注意的是tf.reshape不是np.reshape
-# images = tf.reshape(input,[-1,size,size,3])
+images = tf.reshape(input,[-1,size,size,3])
 #drop_out必须设置概率keep_prob，并且keep_prob也是一个占位符，跟输入是一样的，这里由于和原文不一样所以这里应该可以
 #去除，因为我会在最后的全连接层设置drop_out而不是在每一层都设置drop_out
 keep_prob_5 = tf.placeholder(tf.float32)
@@ -89,7 +89,7 @@ keep_prob_75 = tf.placeholder(tf.float32)
 #第一层卷积，首先输入的图片大小是64*64
 def cnnlayer():
     #第一层卷积
-    conv1 = tf.layers.conv2d(inputs=input,
+    conv1 = tf.layers.conv2d(inputs=images,
                             filters=32,
                             kernel_size=[5,5],
                             strides=1,
@@ -126,12 +126,12 @@ def cnnlayer():
                                     strides=2)#(8*8*32)
 
 #第四层卷积
-    # conv4 = tf.layers.conv2d(inputs=pool2,
-    #                         filters=64,
-    #                         kernel_size=[5,5],
-    #                         strides=1,
-    #                         padding='same',
-    #                         activation=tf.nn.relu)#(变成8*8*6）
+    conv4 = tf.layers.conv2d(inputs=pool2,
+                            filters=32,
+                            kernel_size=[5,5],
+                            strides=1,
+                            padding='same',
+                            activation=tf.nn.relu)#(变成8*8*64）
     # pool3 = tf.layers.max_pooling2d(inputs=conv4,
     #                                 pool_size=[2,2],
     #                                 strides=2)#(变成4*4*6)
@@ -140,7 +140,7 @@ def cnnlayer():
 #卷积层加的padding为same是不会改变卷积层的大小的
 #要注意下一层的输入是上一层的输出
 #平坦化
-    flat = tf.reshape(pool2,[-1,8*8*32])
+    flat = tf.reshape(conv4,[-1,8*8*32])
 
 #经过全连接层
     dense = tf.layers.dense(inputs=flat,
@@ -148,18 +148,21 @@ def cnnlayer():
                             activation=tf.nn.relu)
 
 #drop_out，flat打错一次
-    drop_out = tf.layers.dropout(inputs=dense,rate=0.2)
+    drop_out = tf.layers.dropout(inputs=dense,rate=0.5)
 
 #输出层
     logits = tf.layers.dense(drop_out,units=2)
     return logits
     # yield logits
+
 out = cnnlayer()
 # out = next(cnnlayer())
 predict = tf.argmax(out,1)
 saver = tf.train.Saver()
 sess = tf.Session()
+#加载所有参数
 saver.restore(sess,tf.train.latest_checkpoint('.'))
+#从这里开始就可以直接使用模型进行预测，或者接着继续训练
 
 def is_my_face(image):
     res = sess.run(predict, feed_dict={input: [image / 255.0]})
@@ -168,9 +171,9 @@ def is_my_face(image):
     else:
         return False
 
-        # 使用dlib自带的frontal_face_detector作为我们的特征提取器
 
 
+# 使用dlib自带的frontal_face_detector作为我们的特征提取器
 detector = dlib.get_frontal_face_detector()
 
 cam = cv2.VideoCapture(0)
@@ -180,8 +183,8 @@ while True:
     gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     dets = detector(gray_image, 1)
     if not len(dets):
-        # print('Can`t get face.')
-        cv2.imshow('img', img)
+        print('Can`t get face.')
+        cv2.imshow('detection face', img)
         key = cv2.waitKey(30) & 0xff
         if key == 27:
             sys.exit(0)
@@ -197,7 +200,7 @@ while True:
         print('Is this my face? %s' % is_my_face(face))
 
         cv2.rectangle(img, (x2, x1), (y2, y1), (255, 0, 0), 3)
-        cv2.imshow('image', img)
+        cv2.imshow('the face', img)
         key = cv2.waitKey(30) & 0xff
         if key == 27:
             sys.exit(0)
