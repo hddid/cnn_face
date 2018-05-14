@@ -92,74 +92,70 @@ keep_prob_75 = tf.placeholder(tf.float32)
 #第一层卷积，首先输入的图片大小是64*64*3三通道图片
 def cnnlayer():
     #第一层卷积
-    with tf.name_scope('conv1'):
-        conv1 = tf.layers.conv2d(inputs=images,
-                                filters=32,
-                                kernel_size=[5,5],
-                                strides=1,
-                                padding='same',
-                                activation=tf.nn.relu)#输出大小是(64*64*32)
+    conv1 = tf.layers.conv2d(inputs=images,
+                            filters=32,
+                            kernel_size=[3,3],
+                            strides=1,
+                            padding='same',
+                            activation=tf.nn.relu)#输出大小是(64*64*32)
     # 第一层池化
-    with tf.name_scope('pool1'):
-        pool1 = tf.layers.max_pooling2d(inputs=conv1,
-                                        pool_size=[2,2],
-                                        strides=2)#输出大小是(32*32*32)
-    with tf.name_scope('conv2'):
-        #第二层卷积
-        conv2 = tf.layers.conv2d(inputs=pool1,
-                                 filters=32,
-                                 kernel_size=[5,5],
-                                 strides=1,
-                                 padding='same',
-                                 activation=tf.nn.relu)#输出大小是(32*32*32)
-    with tf.name_scope('pool2'):
-        #第二层池化
-        pool2 = tf.layers.max_pooling2d(inputs=conv2,
-                                        pool_size=[2,2],
-                                        strides=2)#输出大小是(16*16*32)
-    with tf.name_scope('conv3'):
-        #第三层卷积
-        conv3 = tf.layers.conv2d(inputs=pool2,
-                                filters=32,
-                                kernel_size=[5,5],
-                                strides=1,
-                                padding='same',
-                                activation=tf.nn.relu)#(变成16*16*32)
-    with tf.name_scope('pool2'):
-        #第三层池化
-        pool3 = tf.layers.max_pooling2d(inputs=conv3,
-                                        pool_size=[2,2],
-                                        strides=2)#输出大小是(8*8*32)
+    pool1 = tf.layers.max_pooling2d(inputs=conv1,
+                                    pool_size=[2,2],
+                                    strides=2)#输出大小是(32*32*32)
+    #第二层卷积
+    conv2 = tf.layers.conv2d(inputs=pool1,
+                             filters=32,
+                             kernel_size=[3,3],
+                             strides=1,
+                             padding='same',
+                             activation=tf.nn.relu)#输出大小是(32*32*32)
+    #第二层池化
+    pool2 = tf.layers.max_pooling2d(inputs=conv2,
+                                    pool_size=[2,2],
+                                    strides=2)#输出大小是(16*16*32)
+    #第三层卷积
+    conv3 = tf.layers.conv2d(inputs=pool2,
+                            filters=32,
+                            kernel_size=[3,3],
+                            strides=1,
+                            padding='same',
+                            activation=tf.nn.relu)#(变成16*16*32)
+    #第三层池化
+    pool3 = tf.layers.max_pooling2d(inputs=conv3,
+                                    pool_size=[2,2],
+                                    strides=2)#输出大小是(8*8*32)
+    #第四层卷积
+    conv4 = tf.layers.conv2d(inputs=pool3,
+                            filters=32,
+                            kernel_size=[3,3],
+                            strides=1,
+                            padding='same',
+                            activation=tf.nn.relu)#输出大小是(变成8*8*32）
 
-        #第四层卷积
-        conv4 = tf.layers.conv2d(inputs=pool3,
-                                filters=32,
-                                kernel_size=[5,5],
-                                strides=1,
-                                padding='same',
-                                activation=tf.nn.relu)#输出大小是(变成8*8*32）
+    # pool3 = tf.layers.max_pooling2d(inputs=conv4,
+    #                                 pool_size=[2,2],
+    #                                 strides=2)#输出大小是(变成4*4*32)
+#缩小一下大小
+#卷积网络在计算每一层的网络个数的时候要细心一些，不然容易出错
+#要注意下一层的输入是上一层的输出
+    #平坦化
+    flat = tf.reshape(conv4,[-1,8*8*32])
 
-        # pool3 = tf.layers.max_pooling2d(inputs=conv4,
-        #                                 pool_size=[2,2],
-        #                                 strides=2)#输出大小是(变成4*4*32)
-    #缩小一下大小
-    #卷积网络在计算每一层的网络个数的时候要细心一些，不然容易出错
-    #要注意下一层的输入是上一层的输出
-        #平坦化
-        flat = tf.reshape(conv4,[-1,8*8*32])
+    #经过全连接层
+    dense = tf.layers.dense(inputs=flat,
+                            units=4096,
+                            activation=tf.nn.relu)
 
-        #经过全连接层
-        dense = tf.layers.dense(inputs=flat,
-                                units=4096,
-                                activation=tf.nn.relu)
 
-        #drop_out处理
-        drop_out = tf.layers.dropout(inputs=dense,rate=0.5)
+    #drop_out处理
+    drop_out = tf.layers.dropout(inputs=dense,rate=0.5)
 
-        #输出层
-        logits = tf.layers.dense(drop_out,units=2)
-        return logits
-        # yield logits
+    #输出层
+    logits = tf.layers.dense(drop_out,units=2)
+    return logits
+    # yield logits
+
+
 
 
 def cnntrain():
@@ -173,8 +169,8 @@ def cnntrain():
         cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=output))
     #将训练优化方法改成GradientDescentOptimizer发现并没有加快收敛所以又改回AdamOptimizer
     #train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy)
-    with tf.name_scope('train_step'):
-        train_step = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
+
+    train_step = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
     # 比较标签是否相等，再求的所有数的平均值，tf.cast(强制转换类型)
     with tf.name_scope('accuracy'):
         accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits,1),tf.argmax(output,1)),tf.float32))
@@ -188,10 +184,6 @@ def cnntrain():
 
     #数据保存器的初始化
     saver = tf.train.Saver()
-
-    # sess = tf.Session()等价于下面的定义
-    sess = tf.Session(graph=tf.get_default_graph())
-    writer = tf.summary.FileWriter('./logs',sess.graph)
 
     with tf.Session() as sess:
 
