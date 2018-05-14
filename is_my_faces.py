@@ -80,8 +80,7 @@ input = tf.placeholder(tf.float32,[None,size,size,3])
 output = tf.placeholder(tf.float32,[None,2])#输出为两个，true or false
 #这里注意的是tf.reshape不是np.reshape
 images = tf.reshape(input,[-1,size,size,3])
-#drop_out必须设置概率keep_prob，并且keep_prob也是一个占位符，跟输入是一样的，这里由于和原文不一样所以这里应该可以
-#去除，因为我会在最后的全连接层设置drop_out而不是在每一层都设置drop_out
+
 keep_prob_5 = tf.placeholder(tf.float32)
 keep_prob_75 = tf.placeholder(tf.float32)
 
@@ -121,12 +120,12 @@ def cnnlayer():
                             padding='same',
                             activation=tf.nn.relu)#(变成16*16*32)
 #第三层池化
-    pool2 = tf.layers.max_pooling2d(inputs=conv3,
+    pool3 = tf.layers.max_pooling2d(inputs=conv3,
                                     pool_size=[2,2],
                                     strides=2)#(8*8*32)
 
 #第四层卷积
-    conv4 = tf.layers.conv2d(inputs=pool2,
+    conv4 = tf.layers.conv2d(inputs=pool3,
                             filters=32,
                             kernel_size=[5,5],
                             strides=1,
