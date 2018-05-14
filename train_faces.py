@@ -12,8 +12,9 @@ other_faces_path = './other_faces'
 
 #图片的大小采集的64*64
 size = 64
+#定义两个数组用来存放图片和标签
 imgs = []
-labs = []#定义两个数组用来存放图片和标签
+labs = []
 #这里是得到图片的大小，进行统一处理，将图片改成统一大小
 def getPaddingSize(img):
     h,w,_ = img.shape#获得图片的宽和高还有深度
@@ -75,12 +76,14 @@ print('train size:%s,test size:%s' % (len(train_x),len(test_x)))
 batch_size = 100
 #计算有多少个batch
 num_batch = (len(train_x)) // batch_size
-
-input = tf.placeholder(tf.float32,[None,size,size,3])
-output = tf.placeholder(tf.float32,[None,2])
+with tf.name_scope('input_image'):
+    input = tf.placeholder(tf.float32,[None,size,size,3],name='x_input')
+    tf.summary.image('input_image',input,7000)
+    output = tf.placeholder(tf.float32,[None,2],name='y_input')
 
 #这里将input再进行处理一下
-# images = tf.reshape(input,[-1,size,size,3])
+
+images = tf.reshape(input,[-1,size,size,3])
 
 keep_prob_5 = tf.placeholder(tf.float32)
 keep_prob_75 = tf.placeholder(tf.float32)
@@ -88,98 +91,116 @@ keep_prob_75 = tf.placeholder(tf.float32)
 #下面开始进行卷积层的处理
 #第一层卷积，首先输入的图片大小是64*64*3三通道图片
 def cnnlayer():
-    conv1 = tf.layers.conv2d(inputs=input,
-                            filters=32,
-                            kernel_size=[5,5],
-                            strides=1,
-                            padding='same',
-                            activation=tf.nn.relu)#输出大小是(64*64*32)
-    #第一层池化
-    pool1 = tf.layers.max_pooling2d(inputs=conv1,
-                                    pool_size=[2,2],
-                                    strides=2)#输出大小是(32*32*32)
+    #第一层卷积
+    with tf.name_scope('conv1'):
+        conv1 = tf.layers.conv2d(inputs=images,
+                                filters=32,
+                                kernel_size=[5,5],
+                                strides=1,
+                                padding='same',
+                                activation=tf.nn.relu)#输出大小是(64*64*32)
+    # 第一层池化
+    with tf.name_scope('pool1'):
+        pool1 = tf.layers.max_pooling2d(inputs=conv1,
+                                        pool_size=[2,2],
+                                        strides=2)#输出大小是(32*32*32)
+    with tf.name_scope('conv2'):
+        #第二层卷积
+        conv2 = tf.layers.conv2d(inputs=pool1,
+                                 filters=32,
+                                 kernel_size=[5,5],
+                                 strides=1,
+                                 padding='same',
+                                 activation=tf.nn.relu)#输出大小是(32*32*32)
+    with tf.name_scope('pool2'):
+        #第二层池化
+        pool2 = tf.layers.max_pooling2d(inputs=conv2,
+                                        pool_size=[2,2],
+                                        strides=2)#输出大小是(16*16*32)
+    with tf.name_scope('conv3'):
+        #第三层卷积
+        conv3 = tf.layers.conv2d(inputs=pool2,
+                                filters=32,
+                                kernel_size=[5,5],
+                                strides=1,
+                                padding='same',
+                                activation=tf.nn.relu)#(变成16*16*32)
+    with tf.name_scope('pool2'):
+        #第三层池化
+        pool3 = tf.layers.max_pooling2d(inputs=conv3,
+                                        pool_size=[2,2],
+                                        strides=2)#输出大小是(8*8*32)
 
-    #第二层卷积
-    conv2 = tf.layers.conv2d(inputs=pool1,
-                            filters=32,
-                            kernel_size=[5,5],
-                            strides=1,
-                            padding='same',
-                            activation=tf.nn.relu)#输出大小是(32*32*32)
+        #第四层卷积
+        conv4 = tf.layers.conv2d(inputs=pool3,
+                                filters=32,
+                                kernel_size=[5,5],
+                                strides=1,
+                                padding='same',
+                                activation=tf.nn.relu)#输出大小是(变成8*8*32）
 
-    #第二层池化
-    pool2 = tf.layers.max_pooling2d(inputs=conv2,
-                                    pool_size=[2,2],
-                                    strides=2)#输出大小是(16*16*32)
+        # pool3 = tf.layers.max_pooling2d(inputs=conv4,
+        #                                 pool_size=[2,2],
+        #                                 strides=2)#输出大小是(变成4*4*32)
+    #缩小一下大小
+    #卷积网络在计算每一层的网络个数的时候要细心一些，不然容易出错
+    #要注意下一层的输入是上一层的输出
+        #平坦化
+        flat = tf.reshape(conv4,[-1,8*8*32])
 
-    #第三层卷积
-    conv3 = tf.layers.conv2d(inputs=pool2,
-                            filters=32,
-                            kernel_size=[5,5],
-                            strides=1,
-                            padding='same',
-                            activation=tf.nn.relu)#(变成16*16*32)
-    #第三层池化
-    pool2 = tf.layers.max_pooling2d(inputs=conv3,
-                                    pool_size=[2,2],
-                                    strides=2)#输出大小是(8*8*32)
+        #经过全连接层
+        dense = tf.layers.dense(inputs=flat,
+                                units=4096,
+                                activation=tf.nn.relu)
 
-    #第四层卷积
-    conv4 = tf.layers.conv2d(inputs=pool2,
-                            filters=32,
-                            kernel_size=[5,5],
-                            strides=1,
-                            padding='same',
-                            activation=tf.nn.relu)#输出大小是(变成8*8*64）
+        #drop_out处理
+        drop_out = tf.layers.dropout(inputs=dense,rate=0.5)
 
-    # pool3 = tf.layers.max_pooling2d(inputs=conv4,
-    #                                 pool_size=[2,2],
-    #                                 strides=2)#输出大小是(变成4*4*64)
-#缩小一下大小
-#卷积网络在计算每一层的网络个数的时候要细心一些，不然容易出错
-#要注意下一层的输入是上一层的输出
-    #平坦化
-    flat = tf.reshape(conv4,[-1,8*8*32])
-
-    #经过全连接层
-    dense = tf.layers.dense(inputs=flat,
-                            units=4096,
-                            activation=tf.nn.relu)
-
-    #drop_out处理
-    drop_out = tf.layers.dropout(inputs=dense,rate=0.5)
-
-    #输出层
-    logits = tf.layers.dense(drop_out,units=2)
-    return logits
-    # yield logits
+        #输出层
+        logits = tf.layers.dense(drop_out,units=2)
+        return logits
+        # yield logits
 
 
 def cnntrain():
     logits = cnnlayer()
     # logits = next(cnnlayer())
 
-    #交叉熵损失函数
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=output))
+
+    # 名称作用域将一些Op划分到一些较大的、有名称的语句块中
+    with tf.name_scope('cross_entropy'):
+        # 交叉熵损失函数
+        cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=output))
     #将训练优化方法改成GradientDescentOptimizer发现并没有加快收敛所以又改回AdamOptimizer
     #train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy)
-    train_step = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
+    with tf.name_scope('train_step'):
+        train_step = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
     # 比较标签是否相等，再求的所有数的平均值，tf.cast(强制转换类型)
-    accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits,1),tf.argmax(output,1)),tf.float32))
+    with tf.name_scope('accuracy'):
+        accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits,1),tf.argmax(output,1)),tf.float32))
     #将loss与accuracy保存以供tensorboard使用
 
     tf.summary.scalar('loss',cross_entropy)
     tf.summary.scalar('accuracy',accuracy)
-    #合并所有的Op为一个Op
+
+    #合并所有的Op为一个Op，Op是节点的意思
     merged_summary_op = tf.summary.merge_all()
 
     #数据保存器的初始化
     saver = tf.train.Saver()
 
+    # sess = tf.Session()等价于下面的定义
+    sess = tf.Session(graph=tf.get_default_graph())
+    writer = tf.summary.FileWriter('./logs',sess.graph)
+
     with tf.Session() as sess:
+
+        #执行初始化Variable对象所需的计算，但返回值为None
         sess.run(tf.global_variables_initializer())
+
         #把summary  Op返回的数据写到磁盘里
         summary_writer = tf.summary.FileWriter('./tmp',graph=tf.get_default_graph())
+
 
         for n in range(10):
             #每次取100(batch_size)张图片
