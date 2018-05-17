@@ -157,7 +157,6 @@ def cnnlayer():
 
 
 
-
 def cnntrain():
     logits = cnnlayer()
     # logits = next(cnnlayer())
@@ -171,6 +170,7 @@ def cnntrain():
     #train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy)
 
     train_step = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
+
     # 比较标签是否相等，再求的所有数的平均值，tf.cast(强制转换类型)
     with tf.name_scope('accuracy'):
         accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits,1),tf.argmax(output,1)),tf.float32))
@@ -213,37 +213,10 @@ def cnntrain():
                     print("第%f个batch，准确率%f" % (n*num_batch+i, acc))
 
                     # 准确率大于0.98时保存并退出
-                    if acc > 0.98 and n > 2:
+                    if acc > 0.98:
                         saver.save(sess, './train_faces.model', global_step=n * num_batch + i)
                         sys.exit(0)
         print('accuracy less 0.98, exited!')
 
 cnntrain()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

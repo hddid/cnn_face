@@ -19,10 +19,12 @@ while True:
     if (n <= 10000):
         print('正在生成第 %s 照片.' % n)
         # 读帧
-
         success, img = camera.read()
-        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)#将图片转换为灰度图
-        faces = haar.detectMultiScale(gray_img, 1.3, 5)#在灰度图中检测出人脸
+        # 将图片转换为灰度图
+        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # 在灰度图中检测出人脸
+        faces = haar.detectMultiScale(gray_img, 1.3, 5)
+        # 从灰度图中抠出脸部设置大小
         for x, y, w, h in faces:
             face = img[y:y+h, x:x+w]#从灰度图中抠出脸部设置大小
             face = cv2.resize(face, (64,64))

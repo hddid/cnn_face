@@ -90,7 +90,7 @@ def cnnlayer():
     #第一层卷积
     conv1 = tf.layers.conv2d(inputs=images,
                             filters=32,
-                            kernel_size=[5,5],
+                            kernel_size=[3,3],
                             strides=1,
                             padding='same',
                             activation=tf.nn.relu)#(64*64*32)
@@ -102,7 +102,7 @@ def cnnlayer():
 #第二层卷积
     conv2 = tf.layers.conv2d(inputs=pool1,
                             filters=32,
-                            kernel_size=[5,5],
+                            kernel_size=[3,3],
                             strides=1,
                             padding='same',
                             activation=tf.nn.relu)#(32*32*32)
@@ -115,7 +115,7 @@ def cnnlayer():
 #第三层卷积
     conv3 = tf.layers.conv2d(inputs=pool2,
                             filters=32,
-                            kernel_size=[5,5],
+                            kernel_size=[3,3],
                             strides=1,
                             padding='same',
                             activation=tf.nn.relu)#(变成16*16*32)
@@ -127,7 +127,7 @@ def cnnlayer():
 #第四层卷积
     conv4 = tf.layers.conv2d(inputs=pool3,
                             filters=32,
-                            kernel_size=[5,5],
+                            kernel_size=[3,3],
                             strides=1,
                             padding='same',
                             activation=tf.nn.relu)#(变成8*8*64）
